@@ -182,15 +182,11 @@
 
   <div class="caveat" id="caveat">Loading data…</div>
 
-  <div class="tab-nav" id="tab-nav">
-    <button data-tab="explorer" class="active">Explorer</button>
-    <button data-tab="deck">Deck Charts</button>
-  </div>
-
-  <div class="tab-panel" id="tab-explorer">
-
   <div class="panel">
-    <h3>Filters</h3>
+    <div class="panel-head">
+      <h3>Filters</h3>
+      <span class="export-note">Shared across both tabs — changes here apply to Explorer and Deck Charts alike.</span>
+    </div>
     <div class="controls-grid">
       <div class="filter-group">
         <div class="label-row"><span style="font-size:13px;font-weight:700">Region</span></div>
@@ -221,6 +217,13 @@
       </div>
     </div>
   </div>
+
+  <div class="tab-nav" id="tab-nav">
+    <button data-tab="explorer" class="active">Explorer</button>
+    <button data-tab="deck">Deck Charts</button>
+  </div>
+
+  <div class="tab-panel" id="tab-explorer">
 
   <div class="caveat" id="explorer-filter-summary"></div>
 
