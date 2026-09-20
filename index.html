@@ -240,7 +240,7 @@
     </div>
     <div class="panel chart-card" id="card-rate">
       <div class="panel-head">
-        <div class="ttl">Daily conversion rate</div>
+        <div class="ttl" id="rate-ttl">Daily conversion rate — Created → Funded</div>
       </div>
       <div class="chart-wrap" id="chart-rate"></div>
     </div>
@@ -249,6 +249,7 @@
   <div class="panel" id="card-pivot">
     <div class="panel-head">
       <h3 style="margin:0">Cross-tab explorer</h3>
+      <span class="export-note" id="pivot-metric-label"></span>
     </div>
     <div class="pivot-controls">
       <div class="pair">
@@ -265,9 +266,9 @@
       </div>
     </div>
     <div class="legend-row">
-      <span>Below filtered average</span>
+      <span id="legend-below">Below filtered average</span>
       <span class="legend-bar"></span>
-      <span>Above filtered average</span>
+      <span id="legend-above">Above filtered average</span>
       <span style="margin-left:16px">Dashed border = fewer than 30 users created (low sample)</span>
     </div>
     <div id="pivot-heat" class="heatmap-wrap"></div>
@@ -649,6 +650,8 @@
       var num = state.metric === "funded" ? byDate[d].funded : byDate[d].transferred;
       return { x:d, y: byDate[d].created ? num / byDate[d].created : 0 };
     });
+    document.getElementById("rate-ttl").textContent =
+      "Daily conversion rate — Created → " + (state.metric === "funded" ? "Funded" : "Transferred");
     drawLineChart(document.getElementById("chart-volume"), volumeData, {
       color: css("--accent"), isPercent:false, valueLabel:"Created"
     });
@@ -767,6 +770,11 @@
     var rowDim = state.pivotRow, colDim = state.pivotCol;
     var rowVals = DIMS[rowDim].values.filter(function(v){ return state[rowDim].has(v); });
     var colVals = DIMS[colDim].values.filter(function(v){ return state[colDim].has(v); });
+
+    var metricLabel = "Created → " + (state.metric === "funded" ? "Funded" : "Transferred") + " rate";
+    document.getElementById("pivot-metric-label").textContent = "Showing: " + metricLabel;
+    document.getElementById("legend-below").textContent = "Below filtered average " + metricLabel;
+    document.getElementById("legend-above").textContent = "Above filtered average " + metricLabel;
 
     var cells = {}; // rowVal|colVal -> {created,funded,transferred}
     rows.forEach(function(r){
