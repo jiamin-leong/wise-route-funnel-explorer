@@ -222,6 +222,8 @@
     </div>
   </div>
 
+  <div class="caveat" id="explorer-filter-summary"></div>
+
   <div class="tiles" id="tiles"></div>
 
   <div class="panel" id="card-funnel">
@@ -279,6 +281,8 @@
   </div>
 
   <div class="tab-panel" id="tab-deck" style="display:none">
+
+    <div class="caveat" id="deck-filter-summary"></div>
 
     <div class="panel" id="card-share">
       <div class="panel-head">
@@ -461,6 +465,7 @@
 
   function renderDeckTab(){
     if (!RAW.length) return;
+    document.getElementById("deck-filter-summary").textContent = "Filters applied (from the Explorer tab) — " + describeFilters();
     renderShareChart();
     renderBarGapChart();
     renderRankedChart();
@@ -580,10 +585,12 @@
 
   function renderAll(){
     var rows = filteredRows();
+    document.getElementById("explorer-filter-summary").textContent = "Filters applied — " + describeFilters();
     renderTiles(rows);
     renderFunnel(rows);
     renderTimeSeries(rows);
     renderPivot(rows);
+    renderDeckTab();
   }
 
   function fmtPct(n){ return (n*100).toFixed(1) + "%"; }
@@ -912,11 +919,11 @@
   function renderShareChart(){
     var dim = document.getElementById("share-dim").value;
     var metric = document.getElementById("share-metric").value;
-    var vals = DIMS[dim].values;
+    var vals = DIMS[dim].values.filter(function(v){ return state[dim].has(v); });
 
     // week -> value -> sum(metric)
     var byWeek = {};
-    RAW.forEach(function(r){
+    filteredRows().forEach(function(r){
       var wk = weekStart(r.dt);
       if (!byWeek[wk]) byWeek[wk] = {};
       byWeek[wk][r[dim]] = (byWeek[wk][r[dim]] || 0) + r[metric];
@@ -1027,8 +1034,8 @@
   // ---------- deck charts: conversion comparison grouped bars ----------
   function renderBarGapChart(){
     var dim = document.getElementById("bargap-dim").value;
-    var vals = DIMS[dim].values;
-    var rows = RAW; // deck tab always shows the full, unfiltered dataset
+    var vals = DIMS[dim].values.filter(function(v){ return state[dim].has(v); });
+    var rows = filteredRows();
     var totals = {};
     vals.forEach(function(v){ totals[v] = {created:0, funded:0, transferred:0}; });
     rows.forEach(function(r){
@@ -1121,10 +1128,14 @@
   function renderRankedChart(){
     var dim = document.getElementById("ranked-dim").value;
     var metric = document.getElementById("ranked-metric").value;
-    var vals = DIMS[dim].values;
+    var vals = DIMS[dim].values.filter(function(v){ return state[dim].has(v); });
     var rows;
 
     if (metric === "repeat"){
+      // repeat_agg.json is precomputed once over the whole dataset (per-user, not
+      // re-aggregatable client-side), so it can't reflect the date range or the
+      // other two dimensions' filters — only whether this dimension's own values
+      // are checked. See the caveat rendered below.
       rows = vals.map(function(v, vi){
         var rec = REPEAT.filter(function(r){ return r.dim === dim && r.value === v; })[0];
         return { value:v, color:dimColor(dim,vi), rate: rec ? rec.repeat_rate : null, n: rec ? rec.users : 0 };
@@ -1132,7 +1143,7 @@
     } else {
       var totals = {};
       vals.forEach(function(v){ totals[v] = {created:0, funded:0, transferred:0}; });
-      RAW.forEach(function(r){
+      filteredRows().forEach(function(r){
         var v = r[dim];
         if (!totals[v]) return;
         totals[v].created += r.created;
@@ -1166,13 +1177,16 @@
     body.appendChild(list);
 
     var note = document.getElementById("ranked-note");
+    var noteParts = [];
     if (rows.length > 1){
       var top = rows[0], bottom = rows[rows.length-1];
       var mult = bottom.rate > 0 ? (top.rate/bottom.rate).toFixed(1) : "∞";
-      note.textContent = top.value + " is " + mult + "× " + bottom.value + " on this metric (n=" + fmtInt(top.n) + " vs n=" + fmtInt(bottom.n) + ").";
-    } else {
-      note.textContent = "";
+      noteParts.push(top.value + " is " + mult + "× " + bottom.value + " on this metric (n=" + fmtInt(top.n) + " vs n=" + fmtInt(bottom.n) + ").");
     }
+    if (metric === "repeat"){
+      noteParts.push("Repeat-transfer rate is precomputed per user over the full Jan 1 – Mar 1 dataset, so it only reflects the " + DIMS[dim].label.toLowerCase() + " filter above — not the date range or the other two dimensions.");
+    }
+    note.textContent = noteParts.join(" ");
   }
 
 })();
