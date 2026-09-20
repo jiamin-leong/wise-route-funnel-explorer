@@ -282,8 +282,6 @@
 
   <div class="tab-panel" id="tab-deck" style="display:none">
 
-    <div class="caveat" id="deck-filter-summary"></div>
-
     <div class="panel" id="card-share">
       <div class="panel-head">
         <div class="panel-title-row" style="border:none;padding:0">
@@ -299,6 +297,7 @@
         </select></div>
         <span class="export-note">Lines are cumulative — the top line always reads 100%.</span>
       </div>
+      <div class="caveat" id="share-filter-summary"></div>
       <div id="chart-share" class="chart-wrap"></div>
     </div>
 
@@ -311,6 +310,7 @@
       <div class="deck-controls">
         <div class="pair">Compare by <select id="bargap-dim"></select></div>
       </div>
+      <div class="caveat" id="bargap-filter-summary"></div>
       <div id="chart-bargap" class="chart-wrap"></div>
     </div>
 
@@ -328,6 +328,7 @@
           <option value="repeat">Repeat-transfer rate</option>
         </select></div>
       </div>
+      <div class="caveat" id="ranked-filter-summary"></div>
       <div id="ranked-body"></div>
       <div class="ranked-note" id="ranked-note"></div>
     </div>
@@ -465,7 +466,6 @@
 
   function renderDeckTab(){
     if (!RAW.length) return;
-    document.getElementById("deck-filter-summary").textContent = "Filters applied (from the Explorer tab) — " + describeFilters();
     renderShareChart();
     renderBarGapChart();
     renderRankedChart();
@@ -943,6 +943,10 @@
       };
     });
 
+    var basisLabel = metric === "created" ? "Transfer Created" : (metric === "funded" ? "Transfer Funded" : "Transfer Transferred");
+    document.getElementById("share-filter-summary").textContent =
+      "Filters applied — " + describeFilters() + " · Basis: " + basisLabel;
+
     drawStackedShareChart(document.getElementById("chart-share"), weeks, series);
   }
 
@@ -1049,6 +1053,7 @@
       { label:"Created → Funded", key:"funded" },
       { label:"Created → Transferred", key:"transferred" }
     ];
+    document.getElementById("bargap-filter-summary").textContent = "Filters applied — " + describeFilters();
     drawGroupedBarChart(document.getElementById("chart-bargap"), groups, vals, totals, dim);
   }
 
@@ -1130,6 +1135,12 @@
     var metric = document.getElementById("ranked-metric").value;
     var vals = DIMS[dim].values.filter(function(v){ return state[dim].has(v); });
     var rows;
+
+    var metricLabel = metric === "repeat" ? "Repeat-transfer rate" :
+      ("Created → " + (metric === "funded" ? "Funded" : "Transferred") + " rate");
+    document.getElementById("ranked-filter-summary").textContent =
+      "Filters applied — " + describeFilters() + " · Metric: " + metricLabel +
+      (metric === "repeat" ? " (date range and other dimensions not applicable — see note below)" : "");
 
     if (metric === "repeat"){
       // repeat_agg.json is precomputed once over the whole dataset (per-user, not
