@@ -1,0 +1,1282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive multi-dimensional explorer for a Wise INR to USD route launch dataset.">
+<title>Route Funnel Explorer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+  :root{
+    color-scheme: light;
+    --page:#f6f8f3; --surface:#ffffff; --surface-2:#eef2e6;
+    --text:#173300; --text-2:#45543a; --muted:#7c8670;
+    --grid:#e4e8dc; --axis:#c9d1bc; --border:rgba(23,51,0,0.14);
+    --accent:#173300; --accent-2:#82d451; --accent-3:#c99323;
+    --good:#2f6e12; --bad:#c23a5e;
+    --div-warm:#e8607e; --div-cold:#82d451; --div-mid:#ece7d6;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --page:#0f1d08; --surface:#173300; --surface-2:#20390c;
+      --text:#f6f8f3; --text-2:#c9d6bc; --muted:#8fa37e;
+      --grid:#2a4413; --axis:#3a5a1c; --border:rgba(246,248,243,0.14);
+      --accent:#9fe872; --accent-2:#ffb1c1; --accent-3:#e0ad3f;
+      --good:#9fe872; --bad:#ffb1c1;
+      --div-warm:#ffb1c1; --div-cold:#9fe872; --div-mid:#33481d;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --page:#0f1d08; --surface:#173300; --surface-2:#20390c;
+    --text:#f6f8f3; --text-2:#c9d6bc; --muted:#8fa37e;
+    --grid:#2a4413; --axis:#3a5a1c; --border:rgba(246,248,243,0.14);
+    --accent:#9fe872; --accent-2:#ffb1c1; --accent-3:#e0ad3f;
+    --good:#9fe872; --bad:#ffb1c1;
+    --div-warm:#ffb1c1; --div-cold:#9fe872; --div-mid:#33481d;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--page); color:var(--text);
+    font-family:'DM Sans', system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding:32px 16px 64px;
+  }
+  @media (min-width:900px){ body{ padding:40px 40px 80px; } }
+  .wrap{ max-width:1180px; margin:0 auto; display:flex; flex-direction:column; gap:24px; }
+  .title-rule{ width:44px; height:5px; border-radius:3px; background:var(--accent-2); margin-bottom:14px; }
+  h1{ font-size:28px; font-weight:800; margin:0 0 4px; letter-spacing:-0.01em; }
+  .sub{ color:var(--text-2); font-size:14px; margin:0; max-width:70ch; line-height:1.5; }
+  .caveat{
+    font-size:12.5px; color:var(--muted); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:10px; padding:10px 14px; line-height:1.5;
+  }
+  .panel{
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:20px; display:flex; flex-direction:column; gap:16px;
+  }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .panel h3{ margin:0; font-size:12.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:700; }
+  .panel-title-row{ display:flex; flex-direction:column; gap:6px; }
+  .panel-title-row h3{ padding-bottom:8px; border-bottom:2px solid var(--border); }
+  .controls-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:20px; }
+  .filter-group{ display:flex; flex-direction:column; gap:8px; }
+  .filter-group .label-row{ display:flex; align-items:center; justify-content:space-between; }
+  .chip-row{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{
+    display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
+    border:1px solid var(--border); background:var(--surface-2); cursor:pointer;
+    font-size:13px; color:var(--text-2); user-select:none; transition:background .12s, color .12s, border-color .12s;
+    font-weight:500;
+  }
+  .chip input{ accent-color:var(--accent-2); width:14px; height:14px; margin:0; cursor:pointer; }
+  .chip.on{ color:var(--text); border-color:var(--border); }
+  .chip .dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .date-row{ display:flex; align-items:center; gap:10px; }
+  select{
+    font:inherit; font-size:13px; color:var(--text); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:8px; padding:7px 10px; min-width:0;
+  }
+  .metric-toggle{ display:flex; gap:4px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:3px; width:fit-content; }
+  .metric-toggle button{
+    font:inherit; font-size:12.5px; font-weight:700; border:none; background:transparent; color:var(--text-2);
+    padding:7px 12px; border-radius:8px; cursor:pointer;
+  }
+  .metric-toggle button.active{ background:var(--surface); color:var(--text); box-shadow:0 1px 0 var(--border); }
+
+  .tiles{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:14px; }
+  .tile{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:4px; }
+  .tile .k{ font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:700; }
+  .tile .v{ font-size:30px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-0.01em; }
+  .tile .d{ font-size:13px; color:var(--text-2); font-variant-numeric:tabular-nums; }
+  .tile .d b{ color:var(--text); }
+
+  .export-btn{
+    display:flex; align-items:center; gap:6px; font:inherit; font-size:12px; font-weight:700;
+    border:1px solid var(--border); background:var(--surface-2); color:var(--text-2);
+    padding:6px 11px; border-radius:8px; cursor:pointer; white-space:nowrap;
+  }
+  .export-btn:hover{ color:var(--text); border-color:var(--text-2); }
+  .export-btn:disabled{ opacity:.5; cursor:default; }
+  .export-btn svg{ width:13px; height:13px; flex:none; }
+  .export-note{ font-size:11.5px; color:var(--muted); }
+
+  .funnel{ display:flex; flex-direction:column; gap:10px; }
+  .funnel-row{ display:grid; grid-template-columns:110px 1fr 90px; align-items:center; gap:12px; }
+  .funnel-label{ font-size:13px; color:var(--text-2); font-weight:600; }
+  .funnel-track{ background:var(--surface-2); border-radius:8px; height:26px; overflow:hidden; position:relative; }
+  .funnel-fill{ height:100%; border-radius:8px; transition:width .25s ease; }
+  .funnel-val{ font-size:13px; font-variant-numeric:tabular-nums; text-align:right; color:var(--text); font-weight:700; }
+  .funnel-drop{ font-size:12px; color:var(--bad); padding-left:110px; margin-top:-4px; font-weight:600; }
+
+  .charts-grid{ display:grid; grid-template-columns:1fr; gap:16px; }
+  @media (min-width:820px){ .charts-grid{ grid-template-columns:1fr 1fr; } }
+  .chart-card{ display:flex; flex-direction:column; gap:8px; }
+  .chart-card .ttl{ font-size:13px; font-weight:700; color:var(--text); }
+  .chart-wrap{ position:relative; }
+  svg.chart{ display:block; width:100%; height:auto; overflow:visible; }
+  .tooltip{
+    position:absolute; pointer-events:none; background:var(--text); color:var(--page);
+    font-size:12px; padding:6px 9px; border-radius:8px; transform:translate(-50%,-115%);
+    white-space:nowrap; opacity:0; transition:opacity .08s; font-variant-numeric:tabular-nums;
+    z-index:5; font-weight:600;
+  }
+  :root[data-theme="dark"] .tooltip, @media (prefers-color-scheme: dark){ .tooltip{ color:var(--page); } }
+  .tooltip.show{ opacity:1; }
+  .tooltip .tt-k{ opacity:.7; }
+
+  .pivot-controls{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+  .pivot-controls .pair{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-2); font-weight:500; }
+  .view-toggle{ display:flex; gap:4px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:3px; }
+  .view-toggle button{ font:inherit; font-size:12.5px; font-weight:700; border:none; background:transparent; color:var(--text-2); padding:6px 11px; border-radius:8px; cursor:pointer; }
+  .view-toggle button.active{ background:var(--surface); color:var(--text); }
+  .pivot-actions{ margin-left:auto; display:flex; align-items:center; gap:10px; }
+
+  .heatmap-wrap{ overflow-x:auto; }
+  table.heatmap{ border-collapse:separate; border-spacing:4px; width:100%; }
+  table.heatmap th{ font-size:12px; color:var(--muted); font-weight:700; text-align:center; padding:4px; }
+  table.heatmap th.corner{ text-align:left; }
+  table.heatmap td.rowhead{ font-size:12.5px; font-weight:700; color:var(--text-2); white-space:nowrap; padding:0 10px 0 0; text-align:right; }
+  .cell{
+    position:relative; border-radius:10px; min-width:96px; height:64px; padding:8px 10px;
+    display:flex; flex-direction:column; justify-content:center; gap:2px; cursor:default;
+    border:1px solid var(--border);
+  }
+  .cell .rate{ font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .cell .n{ font-size:11px; opacity:.85; font-variant-numeric:tabular-nums; font-weight:600; }
+  .cell.low-n{ border-style:dashed; }
+  .legend-row{ display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted); flex-wrap:wrap; }
+  .legend-bar{ width:160px; height:10px; border-radius:999px; background:linear-gradient(90deg, var(--div-warm), var(--div-mid), var(--div-cold)); }
+
+  .table-view{ width:100%; border-collapse:collapse; font-size:13px; }
+  .table-view th, .table-view td{ text-align:left; padding:8px 10px; border-bottom:1px solid var(--grid); font-variant-numeric:tabular-nums; }
+  .table-view th{ color:var(--muted); font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+
+  footer{ font-size:12px; color:var(--muted); line-height:1.6; padding-top:8px; border-top:1px solid var(--border); }
+
+  .tab-nav{ display:flex; gap:4px; background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:4px; width:fit-content; }
+  .tab-nav button{ font:inherit; font-size:13.5px; font-weight:700; border:none; background:transparent; color:var(--text-2); padding:9px 16px; border-radius:9px; cursor:pointer; }
+  .tab-nav button.active{ background:var(--surface); color:var(--text); box-shadow:0 1px 0 var(--border); }
+  .tab-panel{ display:flex; flex-direction:column; gap:24px; }
+
+  .deck-controls{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+  .deck-controls .pair{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-2); font-weight:500; }
+  .legend-list{ display:flex; flex-direction:column; gap:8px; justify-content:center; }
+  .legend-item{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-2); font-weight:600; }
+  .legend-swatch{ width:14px; height:14px; border-radius:4px; flex:none; }
+  .legend-line{ width:18px; height:3px; border-radius:2px; flex:none; }
+
+  .ranked-list{ display:flex; flex-direction:column; gap:10px; }
+  .ranked-row{ display:grid; grid-template-columns:auto 110px 1fr 74px; align-items:center; gap:12px; }
+  .ranked-rank{ font-size:11px; font-weight:800; color:var(--muted); width:16px; text-align:right; font-variant-numeric:tabular-nums; }
+  .ranked-label{ font-size:13px; font-weight:700; color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; gap:6px; }
+  .ranked-label .dot{ width:9px; height:9px; border-radius:50%; flex:none; }
+  .ranked-track{ background:var(--surface-2); border-radius:8px; height:30px; position:relative; overflow:hidden; }
+  .ranked-fill{ height:100%; border-radius:8px; }
+  .ranked-row.leader .ranked-track{ box-shadow:0 0 0 2px var(--text) inset; }
+  .ranked-val{ font-size:13.5px; font-weight:800; text-align:right; color:var(--text); font-variant-numeric:tabular-nums; }
+  .ranked-note{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+</style>
+</head>
+<body>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<div class="wrap">
+  <div>
+    <div class="title-rule"></div>
+    <h1>Route Funnel Explorer</h1>
+    <p class="sub">INR → USD launch data, Jan 1 – Mar 1 2024. Filter by region, platform and experience, then cross-tab any two dimensions to see where conversion actually breaks down &mdash; single-dimension views hide the sharpest findings in this dataset.</p>
+  </div>
+
+  <div class="caveat" id="caveat">Loading data…</div>
+
+  <div class="tab-nav" id="tab-nav">
+    <button data-tab="explorer" class="active">Explorer</button>
+    <button data-tab="deck">Deck Charts</button>
+  </div>
+
+  <div class="tab-panel" id="tab-explorer">
+
+  <div class="panel">
+    <h3>Filters</h3>
+    <div class="controls-grid">
+      <div class="filter-group">
+        <div class="label-row"><span style="font-size:13px;font-weight:700">Region</span></div>
+        <div class="chip-row" id="f-region"></div>
+      </div>
+      <div class="filter-group">
+        <div class="label-row"><span style="font-size:13px;font-weight:700">Platform</span></div>
+        <div class="chip-row" id="f-platform"></div>
+      </div>
+      <div class="filter-group">
+        <div class="label-row"><span style="font-size:13px;font-weight:700">Experience</span></div>
+        <div class="chip-row" id="f-experience"></div>
+      </div>
+      <div class="filter-group">
+        <div class="label-row"><span style="font-size:13px;font-weight:700">Date range</span></div>
+        <div class="date-row">
+          <select id="date-from"></select>
+          <span style="color:var(--muted);font-size:12px">to</span>
+          <select id="date-to"></select>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="label-row" style="margin-bottom:8px"><span style="font-size:13px;font-weight:700">Conversion metric</span></div>
+      <div class="metric-toggle" id="metric-toggle">
+        <button data-metric="funded" class="active">Created → Funded</button>
+        <button data-metric="transferred">Created → Transferred</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="panel" id="card-funnel">
+    <div class="panel-head">
+      <h3>Funnel</h3>
+      <button class="export-btn" data-export="card-funnel" data-name="funnel">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 15v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
+        Export PNG
+      </button>
+    </div>
+    <div class="funnel" id="funnel"></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="panel chart-card" id="card-volume">
+      <div class="panel-head">
+        <div class="ttl">Daily volume — Transfer Created</div>
+        <button class="export-btn" data-export="card-volume" data-name="daily-volume">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 15v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
+          Export PNG
+        </button>
+      </div>
+      <div class="chart-wrap" id="chart-volume"></div>
+    </div>
+    <div class="panel chart-card" id="card-rate">
+      <div class="panel-head">
+        <div class="ttl">Daily conversion rate</div>
+        <button class="export-btn" data-export="card-rate" data-name="daily-conversion-rate">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 15v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
+          Export PNG
+        </button>
+      </div>
+      <div class="chart-wrap" id="chart-rate"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="card-pivot">
+    <div class="panel-head">
+      <h3 style="margin:0">Cross-tab explorer</h3>
+    </div>
+    <div class="pivot-controls">
+      <div class="pair">
+        Rows
+        <select id="pivot-row"></select>
+      </div>
+      <div class="pair">
+        Columns
+        <select id="pivot-col"></select>
+      </div>
+      <div class="view-toggle" id="view-toggle">
+        <button data-view="heat" class="active">Heatmap</button>
+        <button data-view="table">Table</button>
+      </div>
+      <div class="pivot-actions">
+        <button class="export-btn" id="export-pivot" data-name="crosstab">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 15v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
+          Export PNG
+        </button>
+      </div>
+    </div>
+    <div class="legend-row">
+      <span>Below filtered average</span>
+      <span class="legend-bar"></span>
+      <span>Above filtered average</span>
+      <span style="margin-left:16px">Dashed border = fewer than 30 users created (low sample)</span>
+    </div>
+    <div id="pivot-heat" class="heatmap-wrap"></div>
+    <div id="pivot-table" style="display:none; overflow-x:auto"></div>
+  </div>
+
+  </div>
+
+  <div class="tab-panel" id="tab-deck" style="display:none">
+
+    <div class="panel" id="card-share">
+      <div class="panel-head">
+        <div class="panel-title-row" style="border:none;padding:0">
+          <h3 style="border:none;padding:0">Weekly % share of volume</h3>
+        </div>
+        <button class="export-btn" id="export-share" data-name="weekly-share">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 15v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
+          Export PNG
+        </button>
+      </div>
+      <div class="deck-controls">
+        <div class="pair">Dimension <select id="share-dim"></select></div>
+        <div class="pair">Basis <select id="share-metric">
+          <option value="created">Transfer Created</option>
+          <option value="funded">Transfer Funded</option>
+          <option value="transferred">Transfer Transferred</option>
+        </select></div>
+        <span class="export-note">Lines are cumulative — the top line always reads 100%.</span>
+      </div>
+      <div id="chart-share" class="chart-wrap"></div>
+    </div>
+
+    <div class="panel" id="card-bargap">
+      <div class="panel-head">
+        <div class="panel-title-row" style="border:none;padding:0">
+          <h3 style="border:none;padding:0">Conversion comparison</h3>
+        </div>
+        <button class="export-btn" id="export-bargap" data-name="conversion-comparison">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 15v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
+          Export PNG
+        </button>
+      </div>
+      <div class="deck-controls">
+        <div class="pair">Compare by <select id="bargap-dim"></select></div>
+      </div>
+      <div id="chart-bargap" class="chart-wrap"></div>
+    </div>
+
+    <div class="panel" id="card-ranked">
+      <div class="panel-head">
+        <div class="panel-title-row" style="border:none;padding:0">
+          <h3 style="border:none;padding:0">Ranked comparison</h3>
+        </div>
+        <button class="export-btn" id="export-ranked" data-name="ranked-comparison">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v10m0 0l-4-4m4 4l4-4M4 15v1a1 1 0 001 1h10a1 1 0 001-1v-1"/></svg>
+          Export PNG
+        </button>
+      </div>
+      <div class="deck-controls">
+        <div class="pair">Dimension <select id="ranked-dim"></select></div>
+        <div class="pair">Metric <select id="ranked-metric">
+          <option value="funded">Created → Funded rate</option>
+          <option value="transferred">Created → Transferred rate</option>
+          <option value="repeat">Repeat-transfer rate</option>
+        </select></div>
+      </div>
+      <div id="ranked-body"></div>
+      <div class="ranked-note" id="ranked-note"></div>
+    </div>
+
+  </div>
+
+  <footer>
+    Source: <code>launch_data.csv</code> (73,440 events, 40,223 users). Funnel steps matched at the user level (first <code>Transfer Created</code> per user); no transfer-level ID exists in the schema, so the ~7% of users with more than one transfer are approximated rather than split per-transfer. Rates below reflect the currently selected filters and date range. Use "Export PNG" on any chart to save it for reuse elsewhere.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var REGIONS = ["APAC","Europe","NorthAm"];
+  var PLATFORMS = ["Android","iOS","Web"];
+  var EXPERIENCES = ["Existing","New"];
+  var DIMS = {
+    region:     { label:"Region",     values:REGIONS,     colors:["#173300","#82d451","#c99323"] },
+    platform:   { label:"Platform",   values:PLATFORMS,   colors:["#173300","#82d451","#c99323"] },
+    experience: { label:"Experience", values:EXPERIENCES, colors:["#173300","#82d451"] }
+  };
+  var DARK_COLORS = {
+    region:     ["#9fe872","#ffb1c1","#e0ad3f"],
+    platform:   ["#9fe872","#ffb1c1","#e0ad3f"],
+    experience: ["#9fe872","#ffb1c1"]
+  };
+
+  function isDark(){
+    var root = document.documentElement;
+    if (root.getAttribute("data-theme") === "dark") return true;
+    if (root.getAttribute("data-theme") === "light") return false;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function dimColor(dim, idx){
+    var arr = isDark() ? DARK_COLORS[dim] : DIMS[dim].colors;
+    return arr[idx % arr.length];
+  }
+  function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+  var state = {
+    region: new Set(REGIONS),
+    platform: new Set(PLATFORMS),
+    experience: new Set(EXPERIENCES),
+    dateFrom: null, dateTo: null,
+    metric: "funded", // "funded" | "transferred"
+    pivotRow: "region",
+    pivotCol: "platform",
+    pivotView: "heat"
+  };
+
+  var RAW = [];       // full aggregated rows
+  var DATES = [];      // sorted unique dt
+  var REPEAT = [];     // repeat-rate rows: {dim, value, users, repeaters, repeat_rate}
+
+  Promise.all([
+    fetch("data/cohort_agg.json").then(function(r){ return r.json(); }),
+    fetch("data/repeat_agg.json").then(function(r){ return r.json(); }).catch(function(){ return []; })
+  ]).then(function(results){
+      RAW = results[0];
+      REPEAT = results[1];
+      var dateSet = {};
+      RAW.forEach(function(r){ dateSet[r.dt] = true; });
+      DATES = Object.keys(dateSet).sort();
+      state.dateFrom = DATES[0];
+      state.dateTo = DATES[DATES.length-1];
+      init();
+    })
+    .catch(function(err){
+      document.getElementById("caveat").textContent = "Could not load data/cohort_agg.json — " + err;
+    });
+
+  function init(){
+    document.getElementById("caveat").textContent =
+      DATES.length + " days · " + RAW.length + " region×platform×experience×day rows · counts are distinct users, first-touch attributed.";
+
+    buildChips("f-region", "region");
+    buildChips("f-platform", "platform");
+    buildChips("f-experience", "experience");
+    buildDateSelects();
+    buildMetricToggle();
+    buildPivotSelects();
+    buildViewToggle();
+    buildExportButtons();
+    buildTabs();
+    buildDeckControls();
+
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(){
+      renderAll();
+      renderDeckTab();
+    });
+
+    renderAll();
+    renderDeckTab();
+  }
+
+  function buildTabs(){
+    var nav = document.getElementById("tab-nav");
+    nav.querySelectorAll("button").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        nav.querySelectorAll("button").forEach(function(b){ b.classList.toggle("active", b===btn); });
+        var tab = btn.getAttribute("data-tab");
+        document.getElementById("tab-explorer").style.display = tab === "explorer" ? "" : "none";
+        document.getElementById("tab-deck").style.display = tab === "deck" ? "" : "none";
+        if (tab === "deck") renderDeckTab();
+      });
+    });
+  }
+
+  function fillDimSelect(sel, defaultVal){
+    sel.innerHTML = "";
+    Object.keys(DIMS).forEach(function(k){
+      var opt = document.createElement("option");
+      opt.value = k; opt.textContent = DIMS[k].label;
+      sel.appendChild(opt);
+    });
+    sel.value = defaultVal;
+  }
+
+  function buildDeckControls(){
+    var shareDim = document.getElementById("share-dim");
+    var shareMetric = document.getElementById("share-metric");
+    var bargapDim = document.getElementById("bargap-dim");
+    var rankedDim = document.getElementById("ranked-dim");
+    var rankedMetric = document.getElementById("ranked-metric");
+
+    fillDimSelect(shareDim, "region");
+    fillDimSelect(bargapDim, "experience");
+    fillDimSelect(rankedDim, "platform");
+
+    [shareDim, shareMetric, bargapDim, rankedDim, rankedMetric].forEach(function(el){
+      el.addEventListener("change", renderDeckTab);
+    });
+
+    document.getElementById("export-share").addEventListener("click", function(){ exportCardAsPng(document.getElementById("card-share"), "weekly-share", this); });
+    document.getElementById("export-bargap").addEventListener("click", function(){ exportCardAsPng(document.getElementById("card-bargap"), "conversion-comparison", this); });
+    document.getElementById("export-ranked").addEventListener("click", function(){ exportCardAsPng(document.getElementById("card-ranked"), "ranked-comparison", this); });
+  }
+
+  function renderDeckTab(){
+    if (!RAW.length) return;
+    renderShareChart();
+    renderBarGapChart();
+    renderRankedChart();
+  }
+
+  function buildChips(containerId, dim){
+    var el = document.getElementById(containerId);
+    el.innerHTML = "";
+    DIMS[dim].values.forEach(function(val, i){
+      var label = document.createElement("label");
+      label.className = "chip on";
+      var cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = true;
+      cb.addEventListener("change", function(){
+        if (cb.checked) state[dim].add(val); else state[dim].delete(val);
+        label.classList.toggle("on", cb.checked);
+        renderAll();
+      });
+      var dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.background = dimColor(dim, i);
+      var txt = document.createElement("span");
+      txt.textContent = val;
+      label.appendChild(cb); label.appendChild(dot); label.appendChild(txt);
+      el.appendChild(label);
+    });
+  }
+
+  function buildDateSelects(){
+    var from = document.getElementById("date-from");
+    var to = document.getElementById("date-to");
+    [from, to].forEach(function(sel){
+      sel.innerHTML = "";
+      DATES.forEach(function(d){
+        var opt = document.createElement("option");
+        opt.value = d; opt.textContent = d;
+        sel.appendChild(opt);
+      });
+    });
+    from.value = state.dateFrom; to.value = state.dateTo;
+    from.addEventListener("change", function(){
+      state.dateFrom = from.value;
+      if (state.dateFrom > state.dateTo) { state.dateTo = state.dateFrom; to.value = state.dateTo; }
+      renderAll();
+    });
+    to.addEventListener("change", function(){
+      state.dateTo = to.value;
+      if (state.dateTo < state.dateFrom) { state.dateFrom = state.dateTo; from.value = state.dateFrom; }
+      renderAll();
+    });
+  }
+
+  function buildMetricToggle(){
+    var el = document.getElementById("metric-toggle");
+    el.querySelectorAll("button").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.metric = btn.getAttribute("data-metric");
+        el.querySelectorAll("button").forEach(function(b){ b.classList.toggle("active", b===btn); });
+        renderAll();
+      });
+    });
+  }
+
+  function buildPivotSelects(){
+    var rowSel = document.getElementById("pivot-row");
+    var colSel = document.getElementById("pivot-col");
+    function fill(sel, exclude){
+      sel.innerHTML = "";
+      Object.keys(DIMS).forEach(function(k){
+        if (k === exclude) return;
+        var opt = document.createElement("option");
+        opt.value = k; opt.textContent = DIMS[k].label;
+        sel.appendChild(opt);
+      });
+    }
+    fill(rowSel, state.pivotCol); rowSel.value = state.pivotRow;
+    fill(colSel, state.pivotRow); colSel.value = state.pivotCol;
+    rowSel.addEventListener("change", function(){
+      state.pivotRow = rowSel.value;
+      fill(colSel, state.pivotRow);
+      if (!Object.keys(DIMS).includes(state.pivotCol) || state.pivotCol === state.pivotRow){
+        state.pivotCol = Object.keys(DIMS).filter(function(k){ return k!==state.pivotRow; })[0];
+      }
+      colSel.value = state.pivotCol;
+      renderAll();
+    });
+    colSel.addEventListener("change", function(){
+      state.pivotCol = colSel.value;
+      fill(rowSel, state.pivotCol);
+      rowSel.value = state.pivotRow;
+      renderAll();
+    });
+  }
+
+  function buildViewToggle(){
+    var el = document.getElementById("view-toggle");
+    el.querySelectorAll("button").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.pivotView = btn.getAttribute("data-view");
+        el.querySelectorAll("button").forEach(function(b){ b.classList.toggle("active", b===btn); });
+        document.getElementById("pivot-heat").style.display = state.pivotView === "heat" ? "" : "none";
+        document.getElementById("pivot-table").style.display = state.pivotView === "table" ? "" : "none";
+      });
+    });
+  }
+
+  // ---------- PNG export: the claude.ai downloads capability when embedded,
+  // a plain browser download when running as a standalone page (e.g. GitHub Pages) ----------
+  var downloadsNS = null;
+  var downloadsChecked = false;
+  var inClaudeHost = !!(window.claude && typeof window.claude.use === "function");
+  function getDownloads(){
+    if (downloadsChecked) return Promise.resolve(downloadsNS);
+    downloadsChecked = true;
+    if (!inClaudeHost) return Promise.resolve(null);
+    return window.claude.use("downloads").then(function(ns){ downloadsNS = ns; return ns; }).catch(function(){ return null; });
+  }
+
+  function browserDownloadBlob(blob, filename){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function exportCardAsPng(cardEl, filenameBase, btn){
+    if (typeof html2canvas !== "function"){
+      alert("Chart export library did not load — try again in a moment.");
+      return;
+    }
+    var originalLabel = btn ? btn.innerHTML : null;
+    if (btn){ btn.disabled = true; btn.textContent = "Exporting…"; }
+    var bg = css("--surface") || "#ffffff";
+    var filename = "route-funnel-explorer-" + filenameBase + ".png";
+    html2canvas(cardEl, { backgroundColor: bg, scale: 2 }).then(function(canvas){
+      canvas.toBlob(function(blob){
+        if (!blob){
+          if (btn){ btn.disabled = false; btn.innerHTML = originalLabel; }
+          return;
+        }
+        if (!inClaudeHost){
+          browserDownloadBlob(blob, filename);
+          if (btn){ btn.disabled = false; btn.innerHTML = originalLabel; }
+          return;
+        }
+        getDownloads().then(function(downloads){
+          if (!downloads){
+            alert("Saving files isn't available in this view. Try opening the artifact directly in claude.ai.");
+            if (btn){ btn.disabled = false; btn.innerHTML = originalLabel; }
+            return;
+          }
+          downloads.save({ filename: filename, data: blob })
+            .then(function(){ if (btn){ btn.disabled = false; btn.innerHTML = originalLabel; } })
+            .catch(function(err){
+              if (err && err.code !== "declined") console.warn("export declined/failed", err);
+              if (btn){ btn.disabled = false; btn.innerHTML = originalLabel; }
+            });
+        });
+      }, "image/png");
+    }).catch(function(err){
+      console.warn("html2canvas failed", err);
+      if (btn){ btn.disabled = false; btn.innerHTML = originalLabel; }
+    });
+  }
+
+  function buildExportButtons(){
+    document.querySelectorAll(".export-btn[data-export]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var card = document.getElementById(btn.getAttribute("data-export"));
+        exportCardAsPng(card, btn.getAttribute("data-name"), btn);
+      });
+    });
+    document.getElementById("export-pivot").addEventListener("click", function(){
+      var card = document.getElementById("card-pivot");
+      var name = "crosstab-" + state.pivotRow + "-x-" + state.pivotCol + "-" + state.pivotView;
+      exportCardAsPng(card, name, this);
+    });
+  }
+
+  function filteredRows(){
+    return RAW.filter(function(r){
+      return state.region.has(r.region) &&
+             state.platform.has(r.platform) &&
+             state.experience.has(r.experience) &&
+             r.dt >= state.dateFrom && r.dt <= state.dateTo;
+    });
+  }
+
+  function sum(rows, key){ return rows.reduce(function(a,r){ return a + r[key]; }, 0); }
+
+  function renderAll(){
+    var rows = filteredRows();
+    renderTiles(rows);
+    renderFunnel(rows);
+    renderTimeSeries(rows);
+    renderPivot(rows);
+  }
+
+  function fmtPct(n){ return (n*100).toFixed(1) + "%"; }
+  function fmtInt(n){ return n.toLocaleString("en-US"); }
+
+  function renderTiles(rows){
+    var created = sum(rows,"created"), funded = sum(rows,"funded"), transferred = sum(rows,"transferred");
+    var tiles = [
+      { k:"Transfer Created", v:fmtInt(created), d:"100% baseline" },
+      { k:"Transfer Funded", v:fmtInt(funded), d: created ? fmtPct(funded/created) + " of Created" : "—" },
+      { k:"Transfer Transferred", v:fmtInt(transferred), d: created ? fmtPct(transferred/created) + " of Created · " + (funded ? fmtPct(transferred/funded) : "—") + " of Funded" : "—" }
+    ];
+    var el = document.getElementById("tiles");
+    el.innerHTML = "";
+    tiles.forEach(function(t){
+      var div = document.createElement("div");
+      div.className = "tile";
+      div.innerHTML = '<div class="k">'+t.k+'</div><div class="v">'+t.v+'</div><div class="d">'+t.d+'</div>';
+      el.appendChild(div);
+    });
+  }
+
+  function renderFunnel(rows){
+    var created = sum(rows,"created"), funded = sum(rows,"funded"), transferred = sum(rows,"transferred");
+    var max = created || 1;
+    var steps = [
+      { label:"Created", val:created, color: css("--accent") },
+      { label:"Funded", val:funded, color: css("--accent-2") },
+      { label:"Transferred", val:transferred, color: css("--accent-3") }
+    ];
+    var el = document.getElementById("funnel");
+    el.innerHTML = "";
+    steps.forEach(function(s, i){
+      var row = document.createElement("div");
+      row.className = "funnel-row";
+      var pct = max ? (s.val/max*100) : 0;
+      row.innerHTML =
+        '<div class="funnel-label">'+s.label+'</div>' +
+        '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct+'%; background:'+s.color+'"></div></div>' +
+        '<div class="funnel-val">'+fmtInt(s.val)+'</div>';
+      el.appendChild(row);
+      if (i > 0){
+        var prev = steps[i-1].val;
+        var drop = prev ? (1 - s.val/prev) : 0;
+        var dropEl = document.createElement("div");
+        dropEl.className = "funnel-drop";
+        dropEl.textContent = "↓ " + fmtPct(drop) + " drop-off from " + steps[i-1].label;
+        el.appendChild(dropEl);
+      }
+    });
+  }
+
+  // ---------- time series charts ----------
+  function renderTimeSeries(rows){
+    var byDate = {};
+    rows.forEach(function(r){
+      if (!byDate[r.dt]) byDate[r.dt] = { created:0, funded:0, transferred:0 };
+      byDate[r.dt].created += r.created;
+      byDate[r.dt].funded += r.funded;
+      byDate[r.dt].transferred += r.transferred;
+    });
+    var dates = Object.keys(byDate).sort();
+    var volumeData = dates.map(function(d){ return { x:d, y: byDate[d].created }; });
+    var rateData = dates.map(function(d){
+      var num = state.metric === "funded" ? byDate[d].funded : byDate[d].transferred;
+      return { x:d, y: byDate[d].created ? num / byDate[d].created : 0 };
+    });
+    drawLineChart(document.getElementById("chart-volume"), volumeData, {
+      color: css("--accent"), isPercent:false, valueLabel:"Created"
+    });
+    drawLineChart(document.getElementById("chart-rate"), rateData, {
+      color: css("--accent-2"), isPercent:true, valueLabel: state.metric === "funded" ? "Created→Funded" : "Created→Transferred"
+    });
+  }
+
+  function drawLineChart(container, data, opts){
+    container.innerHTML = "";
+    if (!data.length) return;
+    var W = 720, H = 220, padL = 44, padR = 12, padT = 16, padB = 26;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var ys = data.map(function(d){ return d.y; });
+    var yMax = Math.max.apply(null, ys) * 1.15 || (opts.isPercent ? 1 : 1);
+    var yMin = 0;
+    if (opts.isPercent) yMax = Math.min(1, Math.max(yMax, 0.05));
+
+    function xAt(i){ return padL + (data.length===1 ? 0 : (i/(data.length-1)) * innerW); }
+    function yAt(v){ return padT + innerH - ((v - yMin)/(yMax - yMin || 1)) * innerH; }
+
+    var svgNS = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.setAttribute("class", "chart");
+
+    // gridlines
+    var gridColor = css("--grid"), mutedColor = css("--muted");
+    var ticks = 4;
+    for (var t=0; t<=ticks; t++){
+      var v = yMin + (yMax-yMin) * t/ticks;
+      var y = yAt(v);
+      var line = document.createElementNS(svgNS,"line");
+      line.setAttribute("x1", padL); line.setAttribute("x2", W-padR);
+      line.setAttribute("y1", y); line.setAttribute("y2", y);
+      line.setAttribute("stroke", gridColor); line.setAttribute("stroke-width", "1");
+      svg.appendChild(line);
+      var label = document.createElementNS(svgNS,"text");
+      label.setAttribute("x", 0); label.setAttribute("y", y+4);
+      label.setAttribute("font-size","11"); label.setAttribute("fill", mutedColor);
+      label.textContent = opts.isPercent ? Math.round(v*100)+"%" : Math.round(v).toLocaleString("en-US");
+      svg.appendChild(label);
+    }
+
+    // x labels: first, middle, last
+    [0, Math.floor((data.length-1)/2), data.length-1].forEach(function(i){
+      var label = document.createElementNS(svgNS,"text");
+      label.setAttribute("x", xAt(i)); label.setAttribute("y", H-6);
+      label.setAttribute("font-size","11"); label.setAttribute("fill", mutedColor);
+      label.setAttribute("text-anchor", i===0 ? "start" : (i===data.length-1 ? "end" : "middle"));
+      label.textContent = data[i].x.slice(5);
+      svg.appendChild(label);
+    });
+
+    // area fill
+    var areaPts = data.map(function(d,i){ return xAt(i)+","+yAt(d.y); }).join(" ");
+    var area = document.createElementNS(svgNS,"polygon");
+    area.setAttribute("points", padL+","+yAt(yMin)+" "+areaPts+" "+xAt(data.length-1)+","+yAt(yMin));
+    area.setAttribute("fill", opts.color); area.setAttribute("opacity","0.12");
+    svg.appendChild(area);
+
+    // line
+    var linePts = data.map(function(d,i){ return xAt(i)+","+yAt(d.y); }).join(" ");
+    var poly = document.createElementNS(svgNS,"polyline");
+    poly.setAttribute("points", linePts);
+    poly.setAttribute("fill","none"); poly.setAttribute("stroke", opts.color);
+    poly.setAttribute("stroke-width","2.5"); poly.setAttribute("stroke-linejoin","round"); poly.setAttribute("stroke-linecap","round");
+    svg.appendChild(poly);
+
+    // crosshair group
+    var chLine = document.createElementNS(svgNS,"line");
+    chLine.setAttribute("y1", padT); chLine.setAttribute("y2", padT+innerH);
+    chLine.setAttribute("stroke", mutedColor); chLine.setAttribute("stroke-width","1"); chLine.setAttribute("stroke-dasharray","3,3");
+    chLine.setAttribute("opacity","0");
+    svg.appendChild(chLine);
+    var chDot = document.createElementNS(svgNS,"circle");
+    chDot.setAttribute("r","4"); chDot.setAttribute("fill", opts.color); chDot.setAttribute("opacity","0");
+    chDot.setAttribute("stroke", css("--surface")); chDot.setAttribute("stroke-width","2");
+    svg.appendChild(chDot);
+
+    var overlay = document.createElementNS(svgNS,"rect");
+    overlay.setAttribute("x", padL); overlay.setAttribute("y", padT);
+    overlay.setAttribute("width", innerW); overlay.setAttribute("height", innerH);
+    overlay.setAttribute("fill", "transparent");
+    svg.appendChild(overlay);
+
+    var tooltip = document.createElement("div");
+    tooltip.className = "tooltip";
+    container.style.position = "relative";
+    container.appendChild(svg);
+    container.appendChild(tooltip);
+
+    overlay.addEventListener("mousemove", function(e){
+      var rect = svg.getBoundingClientRect();
+      var px = (e.clientX - rect.left) / rect.width * W;
+      var idx = Math.round(((px - padL) / innerW) * (data.length-1));
+      idx = Math.max(0, Math.min(data.length-1, idx));
+      var d = data[idx];
+      var x = xAt(idx), y = yAt(d.y);
+      chLine.setAttribute("x1", x); chLine.setAttribute("x2", x); chLine.setAttribute("opacity","1");
+      chDot.setAttribute("cx", x); chDot.setAttribute("cy", y); chDot.setAttribute("opacity","1");
+      var valStr = opts.isPercent ? fmtPct(d.y) : fmtInt(d.y);
+      tooltip.innerHTML = '<span class="tt-k">'+d.x+'</span> · ' + valStr + ' ' + opts.valueLabel;
+      tooltip.style.left = (x / W * 100) + "%";
+      tooltip.style.top = (y / H * 100) + "%";
+      tooltip.classList.add("show");
+    });
+    overlay.addEventListener("mouseleave", function(){
+      chLine.setAttribute("opacity","0"); chDot.setAttribute("opacity","0");
+      tooltip.classList.remove("show");
+    });
+  }
+
+  // ---------- pivot / cross-tab ----------
+  function renderPivot(rows){
+    var rowDim = state.pivotRow, colDim = state.pivotCol;
+    var rowVals = DIMS[rowDim].values.filter(function(v){ return state[rowDim].has(v); });
+    var colVals = DIMS[colDim].values.filter(function(v){ return state[colDim].has(v); });
+
+    var cells = {}; // rowVal|colVal -> {created,funded,transferred}
+    rows.forEach(function(r){
+      var rv = r[rowDim], cv = r[colDim];
+      var key = rv+"|"+cv;
+      if (!cells[key]) cells[key] = { created:0, funded:0, transferred:0 };
+      cells[key].created += r.created;
+      cells[key].funded += r.funded;
+      cells[key].transferred += r.transferred;
+    });
+
+    var totalCreated = sum(rows,"created");
+    var totalNum = sum(rows, state.metric);
+    var avgRate = totalCreated ? totalNum/totalCreated : 0;
+
+    // compute rates for scale
+    var rateList = [];
+    rowVals.forEach(function(rv){ colVals.forEach(function(cv){
+      var c = cells[rv+"|"+cv];
+      if (c && c.created > 0) rateList.push(c[state.metric]/c.created);
+    }); });
+    var maxDev = Math.max(0.05, Math.max.apply(null, rateList.map(function(r){ return Math.abs(r-avgRate); }).concat([0.05])));
+
+    renderHeat(rowDim, colDim, rowVals, colVals, cells, avgRate, maxDev);
+    renderPivotTable(rowDim, colDim, rowVals, colVals, cells);
+  }
+
+  function rateColor(rate, avg, maxDev){
+    // diverging: below avg -> warm(rose), above avg -> cool(lime), midpoint neutral
+    var dev = (rate - avg) / maxDev; // -1..1
+    dev = Math.max(-1, Math.min(1, dev));
+    var warm = hexToRgb(css("--div-warm"));
+    var mid = hexToRgb(css("--div-mid"));
+    var cold = hexToRgb(css("--div-cold"));
+    var a, t;
+    if (dev < 0){ a = warm; t = -dev; var b = mid; return mix(b, a, t); }
+    else { var b2 = mid; return mix(b2, cold, dev); }
+  }
+  function hexToRgb(hex){
+    hex = hex.replace("#","");
+    if (hex.length===3) hex = hex.split("").map(function(c){return c+c;}).join("");
+    var n = parseInt(hex,16);
+    return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+  }
+  function mix(a,b,t){
+    var r = Math.round(a.r + (b.r-a.r)*t);
+    var g = Math.round(a.g + (b.g-a.g)*t);
+    var bl = Math.round(a.b + (b.b-a.b)*t);
+    return "rgb("+r+","+g+","+bl+")";
+  }
+  function textOn(rgbStr){
+    var m = rgbStr.match(/\d+/g).map(Number);
+    var lum = (0.299*m[0]+0.587*m[1]+0.114*m[2])/255;
+    return lum > 0.6 ? "#173300" : "#ffffff";
+  }
+
+  function renderHeat(rowDim, colDim, rowVals, colVals, cells, avgRate, maxDev){
+    var wrap = document.getElementById("pivot-heat");
+    wrap.innerHTML = "";
+    var table = document.createElement("table");
+    table.className = "heatmap";
+    var thead = document.createElement("tr");
+    thead.innerHTML = '<th class="corner">'+DIMS[rowDim].label+' \\ '+DIMS[colDim].label+'</th>' +
+      colVals.map(function(cv){ return '<th>'+cv+'</th>'; }).join("");
+    table.appendChild(thead);
+    rowVals.forEach(function(rv){
+      var tr = document.createElement("tr");
+      var rowHead = document.createElement("td");
+      rowHead.className = "rowhead";
+      rowHead.textContent = rv;
+      tr.appendChild(rowHead);
+      colVals.forEach(function(cv){
+        var td = document.createElement("td");
+        var c = cells[rv+"|"+cv] || {created:0,funded:0,transferred:0};
+        var rate = c.created ? c[state.metric]/c.created : null;
+        var div = document.createElement("div");
+        div.className = "cell" + (c.created>0 && c.created<30 ? " low-n" : "");
+        if (rate === null){
+          div.style.background = "var(--surface-2)";
+          div.innerHTML = '<div class="rate" style="color:var(--muted);font-size:13px">no data</div>';
+        } else {
+          var bg = rateColor(rate, avgRate, maxDev);
+          div.style.background = bg;
+          var fg = textOn(bg);
+          div.style.color = fg;
+          div.innerHTML = '<div class="rate">'+fmtPct(rate)+'</div><div class="n">n='+fmtInt(c.created)+'</div>';
+          div.title = rv + " × " + cv + ": " + fmtInt(c[state.metric]) + " / " + fmtInt(c.created) + " = " + fmtPct(rate) +
+            " (filtered avg " + fmtPct(avgRate) + ")";
+        }
+        td.appendChild(div);
+        tr.appendChild(td);
+      });
+      table.appendChild(tr);
+    });
+    wrap.appendChild(table);
+  }
+
+  function renderPivotTable(rowDim, colDim, rowVals, colVals, cells){
+    var wrap = document.getElementById("pivot-table");
+    var html = '<table class="table-view"><tr><th>'+DIMS[rowDim].label+'</th><th>'+DIMS[colDim].label+'</th><th>Created</th><th>Funded</th><th>Transferred</th><th>Created→Funded</th><th>Created→Transferred</th></tr>';
+    rowVals.forEach(function(rv){
+      colVals.forEach(function(cv){
+        var c = cells[rv+"|"+cv];
+        if (!c) return;
+        html += "<tr><td>"+rv+"</td><td>"+cv+"</td><td>"+fmtInt(c.created)+"</td><td>"+fmtInt(c.funded)+"</td><td>"+fmtInt(c.transferred)+"</td>" +
+          "<td>"+(c.created?fmtPct(c.funded/c.created):"—")+"</td><td>"+(c.created?fmtPct(c.transferred/c.created):"—")+"</td></tr>";
+      });
+    });
+    html += "</table>";
+    wrap.innerHTML = html;
+  }
+
+  // ---------- deck charts: weekly % share (cumulative stacked line/area) ----------
+  function weekStart(dtStr){
+    var d = new Date(dtStr + "T00:00:00Z");
+    var day = d.getUTCDay(); // 0=Sun..6=Sat
+    var diffToMonday = (day === 0) ? 6 : day - 1;
+    d.setUTCDate(d.getUTCDate() - diffToMonday);
+    return d.toISOString().slice(0,10);
+  }
+
+  function renderShareChart(){
+    var dim = document.getElementById("share-dim").value;
+    var metric = document.getElementById("share-metric").value;
+    var vals = DIMS[dim].values;
+
+    // week -> value -> sum(metric)
+    var byWeek = {};
+    RAW.forEach(function(r){
+      var wk = weekStart(r.dt);
+      if (!byWeek[wk]) byWeek[wk] = {};
+      byWeek[wk][r[dim]] = (byWeek[wk][r[dim]] || 0) + r[metric];
+    });
+    var weeks = Object.keys(byWeek).sort();
+    // cumulative share series per value, in dimension order (first value = bottom of stack)
+    var series = vals.map(function(v, i){
+      return {
+        name: v,
+        color: dimColor(dim, i),
+        points: weeks.map(function(wk){
+          var total = vals.reduce(function(a,vv){ return a + (byWeek[wk][vv]||0); }, 0);
+          var cum = 0;
+          for (var j=0;j<=i;j++){ cum += (byWeek[wk][vals[j]]||0); }
+          return total ? cum/total : 0;
+        })
+      };
+    });
+
+    drawStackedShareChart(document.getElementById("chart-share"), weeks, series);
+  }
+
+  function drawStackedShareChart(container, weeks, series){
+    container.innerHTML = "";
+    if (!weeks.length) return;
+    var W = 900, H = 260, padL = 44, padR = 130, padT = 16, padB = 26;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    function xAt(i){ return padL + (weeks.length===1 ? 0 : (i/(weeks.length-1)) * innerW); }
+    function yAt(v){ return padT + innerH - v * innerH; }
+
+    var svgNS = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.setAttribute("class", "chart");
+
+    var gridColor = css("--grid"), mutedColor = css("--muted"), plotBg = css("--surface-2");
+
+    var plotRect = document.createElementNS(svgNS,"rect");
+    plotRect.setAttribute("x", padL); plotRect.setAttribute("y", padT);
+    plotRect.setAttribute("width", innerW); plotRect.setAttribute("height", innerH);
+    plotRect.setAttribute("fill", plotBg);
+    svg.appendChild(plotRect);
+
+    for (var t=0; t<=10; t++){
+      var v = t/10;
+      var y = yAt(v);
+      var line = document.createElementNS(svgNS,"line");
+      line.setAttribute("x1", padL); line.setAttribute("x2", W-padR);
+      line.setAttribute("y1", y); line.setAttribute("y2", y);
+      line.setAttribute("stroke", gridColor); line.setAttribute("stroke-width","1");
+      svg.appendChild(line);
+      var label = document.createElementNS(svgNS,"text");
+      label.setAttribute("x", 0); label.setAttribute("y", y+4);
+      label.setAttribute("font-size","11"); label.setAttribute("fill", mutedColor);
+      label.textContent = Math.round(v*100);
+      svg.appendChild(label);
+    }
+
+    [0, Math.floor((weeks.length-1)/2), weeks.length-1].forEach(function(i){
+      if (i<0) return;
+      var label = document.createElementNS(svgNS,"text");
+      label.setAttribute("x", xAt(i)); label.setAttribute("y", H-6);
+      label.setAttribute("font-size","11"); label.setAttribute("fill", mutedColor);
+      label.setAttribute("text-anchor", i===0 ? "start" : (i===weeks.length-1 ? "end" : "middle"));
+      label.textContent = weeks[i].slice(5);
+      svg.appendChild(label);
+    });
+
+    // draw areas from top series (largest cumulative) down to first, so earlier (smaller) series paint on top
+    for (var s = series.length-1; s>=0; s--){
+      var pts = series[s].points.map(function(v,i){ return xAt(i)+","+yAt(v); }).join(" ");
+      var area = document.createElementNS(svgNS,"polygon");
+      area.setAttribute("points", padL+","+yAt(0)+" "+pts+" "+xAt(weeks.length-1)+","+yAt(0));
+      area.setAttribute("fill", series[s].color);
+      area.setAttribute("opacity","0.35");
+      svg.appendChild(area);
+    }
+    series.forEach(function(ser){
+      var pts = ser.points.map(function(v,i){ return xAt(i)+","+yAt(v); }).join(" ");
+      var poly = document.createElementNS(svgNS,"polyline");
+      poly.setAttribute("points", pts);
+      poly.setAttribute("fill","none"); poly.setAttribute("stroke", ser.color);
+      poly.setAttribute("stroke-width","2.5"); poly.setAttribute("stroke-linejoin","round"); poly.setAttribute("stroke-linecap","round");
+      svg.appendChild(poly);
+      ser.points.forEach(function(v,i){
+        var dot = document.createElementNS(svgNS,"circle");
+        dot.setAttribute("cx", xAt(i)); dot.setAttribute("cy", yAt(v)); dot.setAttribute("r","3");
+        dot.setAttribute("fill", ser.color);
+        svg.appendChild(dot);
+      });
+    });
+
+    container.appendChild(svg);
+
+    var legend = document.createElement("div");
+    legend.className = "legend-list";
+    legend.style.cssText = "position:absolute; right:8px; top:"+(padT)+"px;";
+    series.forEach(function(ser){
+      var item = document.createElement("div");
+      item.className = "legend-item";
+      item.innerHTML = '<span class="legend-line" style="background:'+ser.color+'"></span>'+ser.name;
+      legend.appendChild(item);
+    });
+    container.style.position = "relative";
+    container.appendChild(legend);
+  }
+
+  // ---------- deck charts: conversion comparison grouped bars ----------
+  function renderBarGapChart(){
+    var dim = document.getElementById("bargap-dim").value;
+    var vals = DIMS[dim].values;
+    var rows = RAW; // deck tab always shows the full, unfiltered dataset
+    var totals = {};
+    vals.forEach(function(v){ totals[v] = {created:0, funded:0, transferred:0}; });
+    rows.forEach(function(r){
+      var v = r[dim];
+      if (!totals[v]) return;
+      totals[v].created += r.created;
+      totals[v].funded += r.funded;
+      totals[v].transferred += r.transferred;
+    });
+    var groups = [
+      { label:"Created → Funded", key:"funded" },
+      { label:"Created → Transferred", key:"transferred" }
+    ];
+    drawGroupedBarChart(document.getElementById("chart-bargap"), groups, vals, totals, dim);
+  }
+
+  function drawGroupedBarChart(container, groups, vals, totals, dim){
+    container.innerHTML = "";
+    var W = 720, H = 280, padL = 44, padR = 12, padT = 16, padB = 40;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var groupW = innerW / groups.length;
+    var barGap = 6, groupPad = 24;
+    var barW = (groupW - groupPad*2 - barGap*(vals.length-1)) / vals.length;
+
+    function yAt(v){ return padT + innerH - v * innerH; }
+
+    var svgNS = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.setAttribute("class", "chart");
+
+    var gridColor = css("--grid"), mutedColor = css("--muted");
+    for (var t=0; t<=10; t++){
+      var v = t/10, y = yAt(v);
+      var line = document.createElementNS(svgNS,"line");
+      line.setAttribute("x1", padL); line.setAttribute("x2", W-padR);
+      line.setAttribute("y1", y); line.setAttribute("y2", y);
+      line.setAttribute("stroke", gridColor); line.setAttribute("stroke-width","1");
+      svg.appendChild(line);
+      var label = document.createElementNS(svgNS,"text");
+      label.setAttribute("x", 0); label.setAttribute("y", y+4);
+      label.setAttribute("font-size","11"); label.setAttribute("fill", mutedColor);
+      label.textContent = Math.round(v*100);
+      svg.appendChild(label);
+    }
+
+    groups.forEach(function(g, gi){
+      var gx0 = padL + gi*groupW;
+      var label = document.createElementNS(svgNS,"text");
+      label.setAttribute("x", gx0 + groupW/2); label.setAttribute("y", H-14);
+      label.setAttribute("font-size","12"); label.setAttribute("fill", mutedColor);
+      label.setAttribute("text-anchor","middle"); label.setAttribute("font-weight","600");
+      label.textContent = g.label;
+      svg.appendChild(label);
+
+      vals.forEach(function(v, vi){
+        var t = totals[v];
+        var rate = t.created ? t[g.key]/t.created : 0;
+        var bx = gx0 + groupPad + vi*(barW+barGap);
+        var by = yAt(rate);
+        var rect = document.createElementNS(svgNS,"rect");
+        rect.setAttribute("x", bx); rect.setAttribute("y", by);
+        rect.setAttribute("width", barW); rect.setAttribute("height", yAt(0)-by);
+        rect.setAttribute("fill", dimColor(dim, vi));
+        rect.setAttribute("rx", "3");
+        svg.appendChild(rect);
+        var valLabel = document.createElementNS(svgNS,"text");
+        valLabel.setAttribute("x", bx + barW/2); valLabel.setAttribute("y", by - 6);
+        valLabel.setAttribute("font-size","11.5"); valLabel.setAttribute("fill", css("--text"));
+        valLabel.setAttribute("text-anchor","middle"); valLabel.setAttribute("font-weight","700");
+        valLabel.textContent = fmtPct(rate);
+        svg.appendChild(valLabel);
+      });
+    });
+
+    container.appendChild(svg);
+
+    var legend = document.createElement("div");
+    legend.style.cssText = "display:flex; gap:16px; flex-wrap:wrap; margin-top:4px;";
+    vals.forEach(function(v, vi){
+      var item = document.createElement("div");
+      item.className = "legend-item";
+      item.innerHTML = '<span class="legend-swatch" style="background:'+dimColor(dim,vi)+'"></span>'+v;
+      legend.appendChild(item);
+    });
+    container.appendChild(legend);
+  }
+
+  // ---------- deck charts: ranked comparison ----------
+  function renderRankedChart(){
+    var dim = document.getElementById("ranked-dim").value;
+    var metric = document.getElementById("ranked-metric").value;
+    var vals = DIMS[dim].values;
+    var rows;
+
+    if (metric === "repeat"){
+      rows = vals.map(function(v, vi){
+        var rec = REPEAT.filter(function(r){ return r.dim === dim && r.value === v; })[0];
+        return { value:v, color:dimColor(dim,vi), rate: rec ? rec.repeat_rate : null, n: rec ? rec.users : 0 };
+      });
+    } else {
+      var totals = {};
+      vals.forEach(function(v){ totals[v] = {created:0, funded:0, transferred:0}; });
+      RAW.forEach(function(r){
+        var v = r[dim];
+        if (!totals[v]) return;
+        totals[v].created += r.created;
+        totals[v].funded += r.funded;
+        totals[v].transferred += r.transferred;
+      });
+      rows = vals.map(function(v, vi){
+        var t = totals[v];
+        return { value:v, color:dimColor(dim,vi), rate: t.created ? t[metric]/t.created : null, n: t.created };
+      });
+    }
+
+    rows = rows.filter(function(r){ return r.rate !== null; }).sort(function(a,b){ return b.rate - a.rate; });
+    var maxRate = rows.length ? rows[0].rate : 1;
+
+    var body = document.getElementById("ranked-body");
+    body.innerHTML = "";
+    var list = document.createElement("div");
+    list.className = "ranked-list";
+    rows.forEach(function(r, i){
+      var row = document.createElement("div");
+      row.className = "ranked-row" + (i===0 ? " leader" : "");
+      var pct = maxRate ? (r.rate/maxRate*100) : 0;
+      row.innerHTML =
+        '<div class="ranked-rank">'+(i+1)+'</div>' +
+        '<div class="ranked-label"><span class="dot" style="background:'+r.color+'"></span>'+r.value+'</div>' +
+        '<div class="ranked-track"><div class="ranked-fill" style="width:'+pct+'%; background:'+r.color+'"></div></div>' +
+        '<div class="ranked-val">'+fmtPct(r.rate)+'</div>';
+      list.appendChild(row);
+    });
+    body.appendChild(list);
+
+    var note = document.getElementById("ranked-note");
+    if (rows.length > 1){
+      var top = rows[0], bottom = rows[rows.length-1];
+      var mult = bottom.rate > 0 ? (top.rate/bottom.rate).toFixed(1) : "∞";
+      note.textContent = top.value + " is " + mult + "× " + bottom.value + " on this metric (n=" + fmtInt(top.n) + " vs n=" + fmtInt(bottom.n) + ").";
+    } else {
+      note.textContent = "";
+    }
+  }
+
+})();
+</script>
+
+</body>
+</html>
