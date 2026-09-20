@@ -219,8 +219,8 @@
   </div>
 
   <div class="tab-nav" id="tab-nav">
-    <button data-tab="explorer" class="active">Explorer</button>
-    <button data-tab="deck">Deck Charts</button>
+    <button data-tab="explorer" class="active">Overview</button>
+    <button data-tab="deck">Deep Dives</button>
   </div>
 
   <div class="tab-panel" id="tab-explorer">
@@ -251,39 +251,39 @@
     </div>
   </div>
 
-  <div class="panel" id="card-pivot">
-    <div class="panel-head">
-      <h3 style="margin:0">Cross-tab explorer</h3>
-      <span class="export-note" id="pivot-metric-label"></span>
-    </div>
-    <div class="pivot-controls">
-      <div class="pair">
-        Rows
-        <select id="pivot-row"></select>
-      </div>
-      <div class="pair">
-        Columns
-        <select id="pivot-col"></select>
-      </div>
-      <div class="view-toggle" id="view-toggle">
-        <button data-view="heat" class="active">Heatmap</button>
-        <button data-view="table">Table</button>
-      </div>
-    </div>
-    <div class="caveat" id="pivot-filter-summary"></div>
-    <div class="legend-row">
-      <span id="legend-below">Below filtered average</span>
-      <span class="legend-bar"></span>
-      <span id="legend-above">Above filtered average</span>
-      <span style="margin-left:16px">Dashed border = fewer than 30 users created (low sample)</span>
-    </div>
-    <div id="pivot-heat" class="heatmap-wrap"></div>
-    <div id="pivot-table" style="display:none; overflow-x:auto"></div>
-  </div>
-
   </div>
 
   <div class="tab-panel" id="tab-deck" style="display:none">
+
+    <div class="panel" id="card-pivot">
+      <div class="panel-head">
+        <h3 style="margin:0">Cross-tab explorer</h3>
+        <span class="export-note" id="pivot-metric-label"></span>
+      </div>
+      <div class="pivot-controls">
+        <div class="pair">
+          Rows
+          <select id="pivot-row"></select>
+        </div>
+        <div class="pair">
+          Columns
+          <select id="pivot-col"></select>
+        </div>
+        <div class="view-toggle" id="view-toggle">
+          <button data-view="heat" class="active">Heatmap</button>
+          <button data-view="table">Table</button>
+        </div>
+      </div>
+      <div class="caveat" id="pivot-filter-summary"></div>
+      <div class="legend-row">
+        <span id="legend-below">Below filtered average</span>
+        <span class="legend-bar"></span>
+        <span id="legend-above">Above filtered average</span>
+        <span style="margin-left:16px">Dashed border = fewer than 30 users created (low sample)</span>
+      </div>
+      <div id="pivot-heat" class="heatmap-wrap"></div>
+      <div id="pivot-table" style="display:none; overflow-x:auto"></div>
+    </div>
 
     <div class="panel" id="card-share">
       <div class="panel-head">
@@ -469,6 +469,7 @@
 
   function renderDeckTab(){
     if (!RAW.length) return;
+    renderPivot(filteredRows());
     renderShareChart();
     renderBarGapChart();
     renderRankedChart();
@@ -592,7 +593,6 @@
     renderTiles(rows);
     renderFunnel(rows);
     renderTimeSeries(rows);
-    renderPivot(rows);
     renderDeckTab();
   }
 
