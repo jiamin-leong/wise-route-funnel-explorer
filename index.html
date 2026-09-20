@@ -265,6 +265,7 @@
         <button data-view="table">Table</button>
       </div>
     </div>
+    <div class="caveat" id="pivot-filter-summary"></div>
     <div class="legend-row">
       <span id="legend-below">Below filtered average</span>
       <span class="legend-bar"></span>
@@ -588,6 +589,17 @@
   function fmtPct(n){ return (n*100).toFixed(1) + "%"; }
   function fmtInt(n){ return n.toLocaleString("en-US"); }
 
+  function describeFilters(){
+    var parts = ["region","platform","experience"].map(function(dim){
+      var all = DIMS[dim].values;
+      var selected = all.filter(function(v){ return state[dim].has(v); });
+      var label = selected.length === all.length ? "All" : (selected.length ? selected.join(", ") : "None selected");
+      return DIMS[dim].label + ": " + label;
+    });
+    parts.push("Date range: " + state.dateFrom + " to " + state.dateTo);
+    return parts.join(" · ");
+  }
+
   function renderTiles(rows){
     var created = sum(rows,"created"), funded = sum(rows,"funded"), transferred = sum(rows,"transferred");
     var tiles = [
@@ -775,6 +787,7 @@
     document.getElementById("pivot-metric-label").textContent = "Showing: " + metricLabel;
     document.getElementById("legend-below").textContent = "Below filtered average " + metricLabel;
     document.getElementById("legend-above").textContent = "Above filtered average " + metricLabel;
+    document.getElementById("pivot-filter-summary").textContent = "Filters applied — " + describeFilters();
 
     var cells = {}; // rowVal|colVal -> {created,funded,transferred}
     rows.forEach(function(r){
