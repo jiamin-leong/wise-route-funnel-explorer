@@ -168,6 +168,7 @@
   .ranked-label .dot{ width:9px; height:9px; border-radius:50%; flex:none; }
   .ranked-track{ background:var(--surface-2); border-radius:8px; height:30px; position:relative; overflow:hidden; }
   .ranked-fill{ height:100%; border-radius:8px; }
+  .ranked-count{ position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:11.5px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
   .ranked-row.leader .ranked-track{ box-shadow:0 0 0 2px var(--text) inset; }
   .ranked-val{ font-size:13.5px; font-weight:800; text-align:right; color:var(--text); font-variant-numeric:tabular-nums; }
   .ranked-note{ font-size:12.5px; color:var(--muted); margin-top:2px; }
@@ -854,9 +855,12 @@
     var bl = Math.round(a.b + (b.b-a.b)*t);
     return "rgb("+r+","+g+","+bl+")";
   }
-  function textOn(rgbStr){
-    var m = rgbStr.match(/\d+/g).map(Number);
-    var lum = (0.299*m[0]+0.587*m[1]+0.114*m[2])/255;
+  function textOn(colorStr){
+    var rgb = colorStr.charAt(0) === "#" ? hexToRgb(colorStr) : (function(){
+      var m = colorStr.match(/\d+/g).map(Number);
+      return { r:m[0], g:m[1], b:m[2] };
+    })();
+    var lum = (0.299*rgb.r + 0.587*rgb.g + 0.114*rgb.b) / 255;
     return lum > 0.6 ? "#173300" : "#ffffff";
   }
 
@@ -1167,7 +1171,7 @@
       // are checked. See the caveat rendered below.
       rows = vals.map(function(v, vi){
         var rec = REPEAT.filter(function(r){ return r.dim === dim && r.value === v; })[0];
-        return { value:v, color:dimColor(dim,vi), rate: rec ? rec.repeat_rate : null, n: rec ? rec.users : 0 };
+        return { value:v, color:dimColor(dim,vi), rate: rec ? rec.repeat_rate : null, n: rec ? rec.users : 0, num: rec ? rec.repeaters : 0 };
       });
     } else {
       var totals = {};
@@ -1181,7 +1185,7 @@
       });
       rows = vals.map(function(v, vi){
         var t = totals[v];
-        return { value:v, color:dimColor(dim,vi), rate: t.created ? t[metric]/t.created : null, n: t.created };
+        return { value:v, color:dimColor(dim,vi), rate: t.created ? t[metric]/t.created : null, n: t.created, num: t[metric] };
       });
     }
 
@@ -1196,10 +1200,12 @@
       var row = document.createElement("div");
       row.className = "ranked-row" + (i===0 ? " leader" : "");
       var pct = maxRate ? (r.rate/maxRate*100) : 0;
+      var countColor = textOn(r.color);
       row.innerHTML =
         '<div class="ranked-rank">'+(i+1)+'</div>' +
         '<div class="ranked-label"><span class="dot" style="background:'+r.color+'"></span>'+r.value+'</div>' +
-        '<div class="ranked-track"><div class="ranked-fill" style="width:'+pct+'%; background:'+r.color+'"></div></div>' +
+        '<div class="ranked-track"><div class="ranked-fill" style="width:'+pct+'%; background:'+r.color+'"></div>' +
+          '<span class="ranked-count" style="color:'+countColor+'">'+fmtInt(r.num)+' / '+fmtInt(r.n)+'</span></div>' +
         '<div class="ranked-val">'+fmtPct(r.rate)+'</div>';
       list.appendChild(row);
     });
