@@ -94,12 +94,15 @@
   .export-note{ font-size:11.5px; color:var(--muted); }
 
   .funnel{ display:flex; flex-direction:column; gap:10px; }
-  .funnel-row{ display:grid; grid-template-columns:110px 1fr 90px; align-items:center; gap:12px; }
+  .funnel-row, .funnel-head{ display:grid; grid-template-columns:110px 1fr 84px 84px 84px; align-items:center; gap:12px; }
+  .funnel-head{ padding-bottom:2px; }
+  .funnel-head span{ font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; text-align:right; }
   .funnel-label{ font-size:13px; color:var(--text-2); font-weight:600; }
   .funnel-track{ background:var(--surface-2); border-radius:8px; height:26px; overflow:hidden; position:relative; }
   .funnel-fill{ height:100%; border-radius:8px; transition:width .25s ease; }
-  .funnel-val{ font-size:13px; font-variant-numeric:tabular-nums; text-align:right; color:var(--text); font-weight:700; }
-  .funnel-drop{ font-size:12px; color:var(--bad); padding-left:110px; margin-top:-4px; font-weight:600; }
+  .funnel-metric{ text-align:right; }
+  .funnel-metric .n{ font-size:13px; font-variant-numeric:tabular-nums; color:var(--text); font-weight:700; }
+  .funnel-metric .n.muted{ color:var(--muted); font-weight:600; }
 
   .charts-grid{ display:grid; grid-template-columns:1fr; gap:16px; }
   @media (min-width:820px){ .charts-grid{ grid-template-columns:1fr 1fr; } }
@@ -637,23 +640,26 @@
     ];
     var el = document.getElementById("funnel");
     el.innerHTML = "";
+
+    var head = document.createElement("div");
+    head.className = "funnel-head";
+    head.innerHTML = '<span></span><span></span><span>Count</span><span>% of ' + steps[0].label + '</span><span>% of previous</span>';
+    el.appendChild(head);
+
     steps.forEach(function(s, i){
       var row = document.createElement("div");
       row.className = "funnel-row";
       var pct = max ? (s.val/max*100) : 0;
+      var ofFirst = i === 0 ? '<div class="funnel-metric"><span class="n muted">—</span></div>'
+        : '<div class="funnel-metric"><span class="n">' + fmtPct(created ? s.val/created : 0) + '</span></div>';
+      var ofPrev = i === 0 ? '<div class="funnel-metric"><span class="n muted">—</span></div>'
+        : '<div class="funnel-metric"><span class="n">' + fmtPct(steps[i-1].val ? s.val/steps[i-1].val : 0) + '</span></div>';
       row.innerHTML =
         '<div class="funnel-label">'+s.label+'</div>' +
         '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct+'%; background:'+s.color+'"></div></div>' +
-        '<div class="funnel-val">'+fmtInt(s.val)+'</div>';
+        '<div class="funnel-metric"><span class="n">'+fmtInt(s.val)+'</span></div>' +
+        ofFirst + ofPrev;
       el.appendChild(row);
-      if (i > 0){
-        var prev = steps[i-1].val;
-        var drop = prev ? (1 - s.val/prev) : 0;
-        var dropEl = document.createElement("div");
-        dropEl.className = "funnel-drop";
-        dropEl.textContent = "↓ " + fmtPct(drop) + " drop-off from " + steps[i-1].label;
-        el.appendChild(dropEl);
-      }
     });
   }
 
