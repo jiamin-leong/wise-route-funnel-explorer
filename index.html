@@ -1068,7 +1068,7 @@
 
   function drawGroupedBarChart(container, groups, vals, totals, dim){
     container.innerHTML = "";
-    var W = 720, H = 280, padL = 44, padR = 12, padT = 16, padB = 40;
+    var W = 720, H = 280, padL = 44, padR = 12, padT = 34, padB = 40;
     var innerW = W - padL - padR, innerH = H - padT - padB;
     var groupW = innerW / groups.length;
     var barGap = 6, groupPad = 24;
@@ -1116,8 +1116,16 @@
         rect.setAttribute("fill", dimColor(dim, vi));
         rect.setAttribute("rx", "3");
         svg.appendChild(rect);
+        var num = t[g.key], denom = t.created;
+        var countLabel = document.createElementNS(svgNS,"text");
+        countLabel.setAttribute("x", bx + barW/2); countLabel.setAttribute("y", by - 6);
+        countLabel.setAttribute("font-size","10"); countLabel.setAttribute("fill", mutedColor);
+        countLabel.setAttribute("text-anchor","middle"); countLabel.setAttribute("font-weight","600");
+        countLabel.textContent = fmtInt(num) + " / " + fmtInt(denom);
+        svg.appendChild(countLabel);
+
         var valLabel = document.createElementNS(svgNS,"text");
-        valLabel.setAttribute("x", bx + barW/2); valLabel.setAttribute("y", by - 6);
+        valLabel.setAttribute("x", bx + barW/2); valLabel.setAttribute("y", by - 19);
         valLabel.setAttribute("font-size","11.5"); valLabel.setAttribute("fill", css("--text"));
         valLabel.setAttribute("text-anchor","middle"); valLabel.setAttribute("font-weight","700");
         valLabel.textContent = fmtPct(rate);
@@ -1132,7 +1140,8 @@
     vals.forEach(function(v, vi){
       var item = document.createElement("div");
       item.className = "legend-item";
-      item.innerHTML = '<span class="legend-swatch" style="background:'+dimColor(dim,vi)+'"></span>'+v;
+      item.innerHTML = '<span class="legend-swatch" style="background:'+dimColor(dim,vi)+'"></span>'+v+
+        ' <span style="opacity:.7">(n=' + fmtInt(totals[v].created) + ' created)</span>';
       legend.appendChild(item);
     });
     container.appendChild(legend);
